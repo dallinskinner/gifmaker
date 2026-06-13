@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PNG to GIF Maker</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #0f0f13;
+    color: #e8e8f0;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 2rem;
+    color: #fff;
+  }
+
+  .drop-zone {
+    border: 2px dashed #3a3a52;
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    margin-bottom: 2rem;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: #7c6ff7;
+    background: rgba(124, 111, 247, 0.06);
+  }
+  .drop-zone p { color: #888; font-size: 0.95rem; }
+  .drop-zone strong { color: #bbb; }
+  #file-input { display: none; }
+
+  #frames-section { display: none; }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+  .section-header h2 { font-size: 1rem; font-weight: 600; color: #ccc; }
+
+  .global-controls {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+    background: #1a1a24;
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+  }
+  .global-controls label { font-size: 0.85rem; color: #aaa; }
+  .global-controls input[type=number] {
+    width: 80px;
+    background: #252535;
+    border: 1px solid #3a3a52;
+    border-radius: 6px;
+    color: #e8e8f0;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.9rem;
+  }
+  .btn-sm {
+    background: #2e2e42;
+    border: 1px solid #3a3a52;
+    border-radius: 6px;
+    color: #ccc;
+    cursor: pointer;
+    font-size: 0.82rem;
+    padding: 0.35rem 0.75rem;
+    transition: background 0.12s;
+  }
+  .btn-sm:hover { background: #3a3a52; }
+
+  #frames-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .frame-card {
+    background: #1a1a24;
+    border: 1px solid #2a2a3a;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    cursor: grab;
+    transition: border-color 0.15s, transform 0.1s;
+    user-select: none;
+  }
+  .frame-card:active { cursor: grabbing; }
+  .frame-card.drag-source { opacity: 0.4; }
+  .frame-card.drag-over-card { border-color: #7c6ff7; transform: scale(1.02); }
+
+  .frame-card img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: contain;
+    background: #111;
+    display: block;
+  }
+
+  .frame-card-body {
+    padding: 0.6rem 0.75rem;
+  }
+  .frame-index {
+    font-size: 0.7rem;
+    color: #666;
+    margin-bottom: 0.35rem;
+  }
+  .frame-duration-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .frame-duration-row label { font-size: 0.75rem; color: #999; white-space: nowrap; }
+  .frame-duration-row input[type=number] {
+    width: 100%;
+    background: #252535;
+    border: 1px solid #3a3a52;
+    border-radius: 5px;
+    color: #e8e8f0;
+    padding: 0.25rem 0.4rem;
+    font-size: 0.82rem;
+  }
+  .frame-duration-row span { font-size: 0.72rem; color: #666; }
+
+  .frame-remove {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: rgba(0,0,0,0.6);
+    border: none;
+    border-radius: 50%;
+    color: #aaa;
+    cursor: pointer;
+    width: 22px;
+    height: 22px;
+    font-size: 0.9rem;
+    line-height: 22px;
+    text-align: center;
+    transition: background 0.12s, color 0.12s;
+  }
+  .frame-remove:hover { background: #c0392b; color: #fff; }
+
+  .generate-row {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+  }
+
+  .btn-primary {
+    background: #7c6ff7;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    padding: 0.65rem 1.5rem;
+    transition: background 0.15s;
+  }
+  .btn-primary:hover { background: #6a5de0; }
+  .btn-primary:disabled { background: #3a3552; cursor: default; opacity: 0.7; }
+
+  #progress-bar-wrap {
+    display: none;
+    flex: 1;
+    min-width: 200px;
+    background: #252535;
+    border-radius: 999px;
+    height: 8px;
+    overflow: hidden;
+  }
+  #progress-bar {
+    height: 100%;
+    background: #7c6ff7;
+    width: 0%;
+    transition: width 0.1s;
+    border-radius: 999px;
+  }
+  #progress-label { font-size: 0.82rem; color: #888; }
+
+  #output-section { display: none; margin-top: 1rem; }
+  #output-section h2 { font-size: 1rem; font-weight: 600; color: #ccc; margin-bottom: 1rem; }
+  #output-gif {
+    max-width: 100%;
+    max-height: 480px;
+    border-radius: 8px;
+    background: #111;
+    display: block;
+    margin-bottom: 1rem;
+    border: 1px solid #2a2a3a;
+  }
+  .btn-download {
+    background: #27ae60;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 0.6rem 1.25rem;
+    text-decoration: none;
+    display: inline-block;
+    transition: background 0.15s;
+  }
+  .btn-download:hover { background: #219a52; }
+
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { opacity: 1; }
+</style>
+</head>
+<body>
+
+<h1>PNG → GIF Maker</h1>
+
+<div class="drop-zone" id="drop-zone">
+  <p><strong>Drop PNG files here</strong> or click to browse</p>
+  <p style="margin-top:0.5rem; font-size:0.82rem;">You can add more files at any time</p>
+  <input type="file" id="file-input" accept="image/png,image/jpeg,image/webp" multiple>
+</div>
+
+<div id="frames-section">
+  <div class="section-header">
+    <h2 id="frames-count">0 frames</h2>
+    <button class="btn-sm" id="clear-btn">Clear all</button>
+  </div>
+
+  <div class="global-controls">
+    <label for="global-delay">Set all frames to</label>
+    <input type="number" id="global-delay" min="10" max="60000" step="10" value="100">
+    <span style="font-size:0.82rem; color:#666;">ms</span>
+    <button class="btn-sm" id="apply-global">Apply</button>
+    <span style="color:#3a3a52; margin: 0 0.25rem;">|</span>
+    <label style="font-size:0.82rem; color:#888;">Drag cards to reorder</label>
+  </div>
+
+  <div id="frames-list"></div>
+
+  <div class="generate-row">
+    <button class="btn-primary" id="generate-btn">Generate GIF</button>
+    <div id="progress-bar-wrap"><div id="progress-bar"></div></div>
+    <span id="progress-label"></span>
+  </div>
+</div>
+
+<div id="output-section">
+  <h2>Output</h2>
+  <img id="output-gif" src="" alt="Generated GIF">
+  <br>
+  <a class="btn-download" id="download-link" href="#" download="animation.gif">Download GIF</a>
+</div>
+
+<!-- gif.js library (CDN) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let frames = []; // { file, dataUrl, delay }
+let dragSrcIndex = null;
+
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+const dropZone    = document.getElementById('drop-zone');
+const fileInput   = document.getElementById('file-input');
+const framesSection = document.getElementById('frames-section');
+const framesList  = document.getElementById('frames-list');
+const framesCount = document.getElementById('frames-count');
+const clearBtn    = document.getElementById('clear-btn');
+const globalDelay = document.getElementById('global-delay');
+const applyGlobal = document.getElementById('apply-global');
+const generateBtn = document.getElementById('generate-btn');
+const progressWrap = document.getElementById('progress-bar-wrap');
+const progressBar = document.getElementById('progress-bar');
+const progressLabel = document.getElementById('progress-label');
+const outputSection = document.getElementById('output-section');
+const outputGif   = document.getElementById('output-gif');
+const downloadLink = document.getElementById('download-link');
+
+// ── Drop zone ─────────────────────────────────────────────────────────────────
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  handleFiles([...e.dataTransfer.files]);
+});
+fileInput.addEventListener('change', () => {
+  handleFiles([...fileInput.files]);
+  fileInput.value = '';
+});
+
+clearBtn.addEventListener('click', () => {
+  frames = [];
+  renderFrames();
+});
+
+applyGlobal.addEventListener('click', () => {
+  const d = parseInt(globalDelay.value, 10);
+  if (isNaN(d) || d < 10) return;
+  frames.forEach(f => f.delay = d);
+  renderFrames();
+});
+
+// ── File loading ──────────────────────────────────────────────────────────────
+function handleFiles(files) {
+  const imageFiles = files.filter(f => f.type.startsWith('image/'));
+  imageFiles.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      frames.push({ file, dataUrl: e.target.result, delay: parseInt(globalDelay.value, 10) || 100 });
+      renderFrames();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderFrames() {
+  framesCount.textContent = `${frames.length} frame${frames.length !== 1 ? 's' : ''}`;
+  framesSection.style.display = frames.length > 0 ? '' : 'none';
+  framesList.innerHTML = '';
+
+  frames.forEach((frame, i) => {
+    const card = document.createElement('div');
+    card.className = 'frame-card';
+    card.draggable = true;
+    card.dataset.index = i;
+
+    card.innerHTML = `
+      <img src="${frame.dataUrl}" alt="Frame ${i+1}">
+      <button class="frame-remove" title="Remove">×</button>
+      <div class="frame-card-body">
+        <div class="frame-index">Frame ${i + 1}</div>
+        <div class="frame-duration-row">
+          <label>Duration</label>
+          <input type="number" min="10" max="60000" step="10" value="${frame.delay}">
+          <span>ms</span>
+        </div>
+      </div>
+    `;
+
+    // Duration change
+    card.querySelector('input').addEventListener('change', e => {
+      const val = parseInt(e.target.value, 10);
+      if (!isNaN(val) && val >= 10) frames[i].delay = val;
+    });
+
+    // Remove
+    card.querySelector('.frame-remove').addEventListener('click', () => {
+      frames.splice(i, 1);
+      renderFrames();
+    });
+
+    // Drag reorder
+    card.addEventListener('dragstart', e => {
+      dragSrcIndex = i;
+      setTimeout(() => card.classList.add('drag-source'), 0);
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('drag-source');
+      document.querySelectorAll('.frame-card').forEach(c => c.classList.remove('drag-over-card'));
+    });
+    card.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      document.querySelectorAll('.frame-card').forEach(c => c.classList.remove('drag-over-card'));
+      card.classList.add('drag-over-card');
+    });
+    card.addEventListener('drop', e => {
+      e.preventDefault();
+      if (dragSrcIndex === null || dragSrcIndex === i) return;
+      const moved = frames.splice(dragSrcIndex, 1)[0];
+      frames.splice(i, 0, moved);
+      dragSrcIndex = null;
+      renderFrames();
+    });
+
+    framesList.appendChild(card);
+  });
+}
+
+// ── GIF generation ────────────────────────────────────────────────────────────
+generateBtn.addEventListener('click', generateGif);
+
+function generateGif() {
+  if (frames.length === 0) return;
+
+  generateBtn.disabled = true;
+  progressWrap.style.display = 'block';
+  progressBar.style.width = '0%';
+  progressLabel.textContent = 'Loading images…';
+  outputSection.style.display = 'none';
+
+  // Load all images first to get dimensions
+  const imgEls = [];
+  let loaded = 0;
+
+  frames.forEach((frame, i) => {
+    const img = new Image();
+    img.onload = () => {
+      imgEls[i] = img;
+      loaded++;
+      if (loaded === frames.length) startEncoding(imgEls);
+    };
+    img.src = frame.dataUrl;
+  });
+}
+
+function startEncoding(imgEls) {
+  // Determine canvas size from first frame
+  const w = imgEls[0].naturalWidth;
+  const h = imgEls[0].naturalHeight;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+
+  progressLabel.textContent = 'Encoding…';
+
+  const gif = new GIF({
+    workers: 2,
+    quality: 10,
+    width: w,
+    height: h,
+    workerScript: 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js',
+  });
+
+  frames.forEach((frame, i) => {
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(imgEls[i], 0, 0, w, h);
+    // gif.js delay is in centiseconds (100ths of a second), but it actually
+    // accepts milliseconds internally and converts — pass ms directly.
+    gif.addFrame(canvas, { delay: frame.delay, copy: true });
+  });
+
+  gif.on('progress', p => {
+    progressBar.style.width = `${Math.round(p * 100)}%`;
+  });
+
+  gif.on('finished', blob => {
+    const url = URL.createObjectURL(blob);
+    outputGif.src = url;
+    downloadLink.href = url;
+    outputSection.style.display = '';
+    progressWrap.style.display = 'none';
+    progressLabel.textContent = '';
+    generateBtn.disabled = false;
+    outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  gif.render();
+}
+</script>
+</body>
+</html>

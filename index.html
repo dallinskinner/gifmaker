@@ -265,8 +265,8 @@
   <a class="btn-download" id="download-link" href="#" download="animation.gif">Download GIF</a>
 </div>
 
-<!-- gif.js library (CDN) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+<!-- gif.js library (vendored locally so it works offline / behind CDN blocks) -->
+<script src="vendor/gif.js"></script>
 <script>
 // ── State ─────────────────────────────────────────────────────────────────────
 let frames = []; // { file, dataUrl, delay }
@@ -331,7 +331,7 @@ function handleFiles(files) {
 // ── Render ────────────────────────────────────────────────────────────────────
 function renderFrames() {
   framesCount.textContent = `${frames.length} frame${frames.length !== 1 ? 's' : ''}`;
-  framesSection.style.display = frames.length > 0 ? '' : 'none';
+  framesSection.style.display = frames.length > 0 ? 'block' : 'none';
   framesList.innerHTML = '';
 
   frames.forEach((frame, i) => {
@@ -438,7 +438,7 @@ function startEncoding(imgEls) {
     quality: 10,
     width: w,
     height: h,
-    workerScript: 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js',
+    workerScript: 'vendor/gif.worker.js',
   });
 
   frames.forEach((frame, i) => {
@@ -457,7 +457,7 @@ function startEncoding(imgEls) {
     const url = URL.createObjectURL(blob);
     outputGif.src = url;
     downloadLink.href = url;
-    outputSection.style.display = '';
+    outputSection.style.display = 'block';
     progressWrap.style.display = 'none';
     progressLabel.textContent = '';
     generateBtn.disabled = false;
